@@ -111,3 +111,16 @@ def test_validate_cni_mtu_script():
     # Test invalid exceeding MTU (1480)
     res_fail = subprocess.run(["python", script_path, "--mtu", "1480", "--json"], capture_output=True, text=True)
     assert res_fail.returncode == 1, "Exceeding MTU should return exit code 1"
+
+def test_dockerfile_and_packaging():
+    df = os.path.join(BASE_DIR, "Dockerfile")
+    req = os.path.join(BASE_DIR, "scripts", "requirements.txt")
+    pkg = os.path.join(BASE_DIR, ".github", "workflows", "package-oci.yml")
+    assert os.path.exists(df)
+    assert os.path.exists(req)
+    assert os.path.exists(pkg)
+    with open(df, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert "FROM cgr.dev/chainguard/python:latest-dev AS builder" in content
+    assert "USER 65532:65532" in content
+

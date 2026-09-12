@@ -1,4 +1,4 @@
-.PHONY: all test lint validate-alerts validate-dashboards clean
+.PHONY: all test lint validate-alerts validate-dashboards docker-build clean
 
 PYTHON ?= python
 
@@ -9,6 +9,9 @@ test:
 
 lint:
 	$(PYTHON) -m flake8 scripts/ tests/ || true
+
+docker-build:
+	docker build -t ghcr.io/freefades2black/platform-sre-tools:latest .
 
 validate-alerts:
 	$(PYTHON) -c "import yaml; yaml.safe_load(open('monitoring/prometheus/lakehouse_sre_rules.yaml'))"

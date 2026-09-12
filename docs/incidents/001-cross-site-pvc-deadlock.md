@@ -33,18 +33,41 @@ During a scheduled failover drill in Region East (Site-07), three Kafka broker S
 
 ## Terminal & Diagnostic Artifacts
 
-### 1. Pod Status and Attachment Failure
+### 1. PVC Status and Attachment Failure
 ```console
-$ kubectl describe pod kafka-broker-02 -n lakehouse-infra
+$ kubectl describe pvc data-kafka-broker-0 -n lakehouse-infra
+Name:          data-kafka-broker-0
+Namespace:     lakehouse-infra
+StorageClass:  ceph-block-fast
+Status:        Bound
+Volume:        pvc-c189b4f2-9811-4f77-88ab-44101e9d2981
+Labels:        app.kubernetes.io/name=kafka
+               strimzi.io/cluster=fleet-kafka-cluster
+               strimzi.io/name=fleet-kafka-cluster-kafka
+Capacity:      250Gi
+Access Modes:  RWO
+VolumeMode:    Filesystem
+Used By:       kafka-broker-02
 Events:
-  Type     Reason              Age                 From                     Message
-  ----     ------              ----                ----                     -------
-  Normal   Scheduled           15m                 default-scheduler        Successfully assigned lakehouse-infra/kafka-broker-02 to node-s07-w06
-  Warning  FailedAttachVolume  14m (x12 over 15m)  attachdetach-controller  Multi-Attach error for volume "pvc-89b1c72e-c1e5-429f-85a7-937eef554012" Volume is already exclusively attached to one node and can't be attached to another
-  Warning  FailedMount         3m (x4 over 9m)     kubelet                  Unable to attach or mount volumes: timed out waiting for the condition
+  Type     Reason              Age                From                     Message
+  ----     ------              ----               ----                     -------
+  Warning  FailedAttachVolume  2m (x12 over 14m)  attachdetach-controller  AttachVolume.Attach failed for volume "pvc-c189b4f2-9811-4f77-88ab-44101e9d2981" : Ceph CSI request timed out after 30s (context deadline exceeded)
+  Warning  FailedMount         1m (x5 over 10m)   kubelet                  Unable to attach or mount volumes: timed out waiting for the condition
 ```
 
-### 2. Node Kernel Dmesg Traces
+### 2. Live Cluster Triage Scrollback (Incident Response Bridge)
+```console
+$ kubectl get events -n lakehouse-infra --sort-by='.metadata.creationTimestamp' --field-selector type=Warning | tail -n 8
+03:17:15 Warning  FailedAttachVolume  pod/kafka-broker-02  AttachVolume.Attach failed for volume "pvc-c189b..." : Ceph CSI request timed out after 30s
+03:19:00 Warning  FailedMount         pod/kafka-broker-02  Unable to attach or mount volumes: timed out waiting for condition
+03:22:15 Warning  FailedAttachVolume  pod/kafka-broker-02  Multi-Attach error for volume "pvc-c189b..." Volume is already exclusively attached to node-s07-w03
+03:25:01 Warning  FailedMount         pod/kafka-broker-02  MountVolume.MountDevice failed for volume "pvc-c189b..." : device /dev/rbd0 is busy
+
+$ kubectl get volumeattachment -A | grep pvc-c189b
+csi-rbd-attacher-pvc-c189b   ceph.rbd.csi.ceph.com   pvc-c189b4f2-9811-4f77-88ab-44101e9d2981   node-s07-w03   true       22m
+```
+
+### 3. Node Kernel Dmesg Traces
 ```console
 # dmesg -T | grep -E "rbd|ceph|blk"
 [Fri Aug 14 03:16:55 2026] libceph: osd32 10.240.12.89:6804 connection reset
@@ -53,11 +76,11 @@ Events:
 [Fri Aug 14 03:18:22 2026] rbd: rbd0: aborting I/O requests due to lock transition deadlock
 ```
 
-### 3. CSI Controller Logs
+### 4. CSI Controller Logs
 ```console
 $ kubectl logs -n ceph-csi-system ceph-csi-rbdplugin-provisioner-7f89c687d-8bkl2 -c csi-attacher --tail=50
-I0814 03:16:35.129381 csi_handler.go:210] Detaching volume pvc-89b1c72e-c1e5-429f-85a7-937eef554012 from node node-s07-w03
-E0814 03:18:35.130291 csi_handler.go:215] Detach failed for volume pvc-89b1c72e-c1e5-429f-85a7-937eef554012: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+I0814 03:16:35.129381 csi_handler.go:210] Detaching volume pvc-c189b4f2-9811-4f77-88ab-44101e9d2981 from node node-s07-w03
+E0814 03:18:35.130291 csi_handler.go:215] Detach failed for volume pvc-c189b4f2-9811-4f77-88ab-44101e9d2981: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
 E0814 03:18:35.130452 connection.go:183] GRPC error: rpc error: code = DeadlineExceeded desc = Ceph API gateway timeout during lock unmap
 ```
 

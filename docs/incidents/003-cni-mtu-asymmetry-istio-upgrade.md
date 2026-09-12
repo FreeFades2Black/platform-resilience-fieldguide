@@ -44,20 +44,26 @@ java.io.IOException: Connection reset by peer
 org.apache.spark.shuffle.FetchFailedException: Failed to connect to node-s34-w08:7337
 ```
 
-### 2. Cilium eBPF Drop Monitor Trace
+### 2. Live Packet Capture Showing MTU Bottleneck (Tcpdump)
+```console
+# tcpdump -nnvv -i eth0 'tcp port 7077 or icmp'
+14:02:11.109283 IP 10.244.2.14.7077 > 10.244.5.22.42100: Flags [.], seq 1:1440, ack 1, win 502, length 1440
+14:02:11.109312 IP 10.244.2.14 > 10.244.5.22: ICMP 10.244.2.14 unreachable - need to frag (mtu 1420), length 556
+14:02:11.109350 IP 10.244.2.14.7077 > 10.244.5.22.42100: Flags [F.], seq 1441, ack 1, win 502, length 0
+14:02:11.109401 IP 10.244.5.22.42100 > 10.244.2.14.7077: Flags [R], seq 1, win 0, length 0
+```
+
+### 3. Cilium eBPF Drop Monitor Trace
 ```console
 # cilium monitor --type drop -v
 xx drop (Invalid packet size) flow 0x98f4b to-endpoint 812, identity 4819->1204, cpu 3: 10.244.8.42:7337 -> 10.244.3.18:48922 tcp ACK, length 1472
    Packet size 1522 exceeds device MTU 1450
    Drop reason: Packet size exceeds MTU and DF flag is set
-```
+   Final verdict: DROP (Reason: MTU exceeded, ICMP unreach suppressed by policy)
 
-### 3. Tcpdump Path MTU Diagnostic
-```console
-# tcpdump -nnvv -i eth0 'icmp[icmptype] == icmp-unreach'
-19:44:22.910281 IP (tos 0xc0, ttl 64, id 18920, offset 0, flags [none], proto ICMP (1), length 576)
-    10.240.0.1 > 10.240.12.89: ICMP 10.244.8.42 unreachable - need to frag (mtu 1380), length 556
-    IP (tos 0x0, ttl 63, id 4129, offset 0, flags [DF], proto TCP (6), length 1472)
+# cilium-dbg bpf tunnel list
+TUNNEL          ENDPOINT   PREFIX      ENCAP   MTU
+10.244.8.42     ep-812     10.244.8/24 geneve  1450  [MISMATCH: Transit Path=1420]
 ```
 
 ---

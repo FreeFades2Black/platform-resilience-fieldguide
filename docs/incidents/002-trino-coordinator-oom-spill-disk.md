@@ -51,7 +51,24 @@ $ dmesg -T | grep -E "Out of memory|Killed process"
 [Sat Aug 22 14:27:41 2026] oom_reaper: reaped process 184920 (java), now anon-rss:0kB
 ```
 
-### 3. Kubelet Pod Termination Record
+### 3. Jstack Thread Contention Trace on Coordinator
+```console
+$ jstack -l 184920 | grep -A 10 "io.trino.spiller"
+"query-execution-481" #192 daemon prio=5 os_prio=0 cpu=14812.11ms elapsed=420.12s tid=0x00007f98b4109000 nid=0x2d2c8 waiting on condition [0x00007f987110e000]
+   java.lang.Thread.State: WAITING (parking)
+\tat jdk.internal.misc.Unsafe.park(java.base@17.0.9/Native Method)
+\t- parking to wait for  <0x00000007018fa090> (a java.util.concurrent.CompletableFuture$Signaller)
+\tat java.util.concurrent.locks.LockSupport.park(java.base@17.0.9/LockSupport.java:211)
+\tat io.trino.spiller.FileSingleStreamSpiller.flushSpillBuffer(FileSingleStreamSpiller.java:188)
+\tat io.trino.operator.HashBuilderOperator.finish(HashBuilderOperator.java:312)
+
+$ cat /sys/fs/cgroup/memory/memory.stat | grep -E "hierarchical_memory_limit|rss"
+rss 64424509440
+rss_huge 2097152000
+hierarchical_memory_limit 68719476736 # 64Gi limit hit: 98.8% consumption
+```
+
+### 4. Kubelet Pod Termination Record
 ```console
 $ kubectl get pod trino-coordinator-0 -n lakehouse-infra -o yaml | grep -A 8 lastState:
     lastState:

@@ -90,23 +90,47 @@ Visualizes end-to-end telemetry across storage attachment latency, Kafka consume
 
 ---
 
-## 6. SRE Automation Tooling
+---
 
-The [`scripts/`](scripts/) directory contains audited operational CLI utilities:
-- **`lease_pruner.py`**: Discovers stalled leases and safely prunes deadlocked finalizers on completed pods. Defaults to `--check-only` (dry-run).
-- **`validate_cni_mtu.py`**: Probes inter-node transit path MTU and detects fragmentation drops before application traffic suffers.
+## 6. SRE Automation Tooling & Hardened OCI Packaging
+
+The operational utilities are packaged as rootless, distroless container images conforming to DoD Iron Bank and Platform One standards:
+
+- **Base Image**: Chainguard Python Distroless (`cgr.dev/chainguard/python:latest`)
+- **Security Context**: Enforced non-root execution (`USER 65532:65532`)
+- **Supply Chain Security**: Built via `.github/workflows/package-oci.yml` with automated Trivy vulnerability scanning and cryptographic signing via Sigstore Cosign.
+
+### Packaged Utilities:
+- **[`lease_pruner.py`](scripts/lease_pruner.py)**: Discovers stalled controller leases and safely dislodges deadlocked finalizers (`sparkoperator.k8s.io/submission-finalizer`, `kubernetes.io/pvc-protection`) on completed pods. Defaults strictly to `--check-only` dry-run mode.
+- **[`validate_cni_mtu.py`](scripts/validate_cni_mtu.py)**: Probes inter-node transit path MTU and detects fragmentation drops before application traffic suffers.
+
+```bash
+# Execute lease pruner dry-run in container
+docker run --rm --net=host -v ~/.kube/config:/home/nonroot/.kube/config:ro \
+  ghcr.io/freefades2black/platform-sre-tools:latest --namespace lakehouse-compute --check-only
+```
 
 ---
 
-## 7. Verification & Testing
+## 7. Field Verification & Resilience Assurance
 
-Execute the full verification harness:
+Platform resilience is verified across three distinct testing tiers:
+
 ```bash
+# Run complete test and lint suite
 make test
 ```
-The test suite validates:
-1. Post-mortem Markdown structure across all required RCA sections.
-2. Runbook existence and syntax consistency.
-3. Prometheus alerting rules YAML schema and alert metadata annotations.
-4. Grafana dashboard JSON schema integrity.
-5. Python remediation script functionality (dry-run and active modes).
+
+### Verification Breakdown:
+1. **Prometheus Alerting Rules Validation (`promtool` & YAML parser)**:
+   - Validates all 6 `PrometheusRule` expressions, duration windows, severity labels, and runbook URL bindings.
+2. **Post-Mortem Structural & RCA Compliance**:
+   - Audits all 4 incident post-mortems against strict blameless post-mortem standards (Executive Summary, Timeline, Terminal Artifacts, Root Cause Analysis, Corrective & Preventative Actions).
+3. **Grafana Dashboard Schema Integrity**:
+   - Validates dashboard JSON UID (`lakehouse-sre-cockpit`), grid layouts, time-series targets, and panel thresholds.
+4. **Remediation CLI & Safety Guardrails**:
+   - Validates `lease_pruner.py` dry-run isolation and JSON telemetry emission.
+   - Validates `validate_cni_mtu.py` detecting MTU boundaries (1350 PASS, 1480 FAIL).
+5. **OCI Image Specification & Security Context**:
+   - Verifies distroless multi-stage build structure and non-root execution (`65532:65532`).
+

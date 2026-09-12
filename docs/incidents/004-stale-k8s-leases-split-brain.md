@@ -67,6 +67,20 @@ E0908 08:50:12.189201 leaderelection.go:332] error retrieving resource lock kube
 I0908 08:50:14.201382 leaderelection.go:283] failed to acquire lease: cp-01.mgmt.site42.mil_9a7b2190 still holds leader lock
 ```
 
+### 4. Etcd Cluster Partition State
+```console
+$ etcdctl endpoint status --cluster -w table --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/healthcheck-client.crt --key=/etc/kubernetes/pki/etcd/healthcheck-client.key
++---------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+|         ENDPOINT          |        ID        | VERSION | DB SIZE | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS |
++---------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+| https://10.240.0.11:2379  | 8e9e05c52164694d | 3.5.12  |   42 MB |      true |      false |         8 |    1429810 |            1429810 |        |
+| https://10.240.0.12:2379  | 6f4208a12b4e819a | 3.5.12  |   42 MB |     false |      false |         8 |    1429810 |            1429810 |        |
+| https://10.240.0.13:2379  | 3a18e9f4a1239c0b | 3.5.12  |   42 MB |     false |      false |         8 |    1429809 |            1429809 |        |
+| https://10.240.0.21:2379  | c1890bf23a0194bc | 3.5.12  |   41 MB |     false |      false |         6 |    1419200 |            1419200 | [PART] |
+| https://10.240.0.22:2379  | 59a80e1948bc12a0 | 3.5.12  |   41 MB |     false |      false |         6 |    1419200 |            1419200 | [PART] |
++---------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+```
+
 ---
 
 ## Root Cause Analysis

@@ -1,0 +1,106 @@
+{
+  "title": "Lakehouse SRE Fleet Cockpit - Golden Signals & Health",
+  "uid": "lakehouse-sre-cockpit",
+  "schemaVersion": 36,
+  "tags": [
+    "lakehouse",
+    "sre",
+    "kubernetes",
+    "trino",
+    "kafka",
+    "csi"
+  ],
+  "timezone": "utc",
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Kafka Consumer Lag by Topic",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(kafka_consumergroup_lag{topic=~\"lakehouse-.*\"}) by (consumergroup, topic)",
+          "legendFormat": "{{topic}} ({{consumergroup}})"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Trino Coordinator & Worker Memory Saturation",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "container_memory_working_set_bytes{pod=~\"trino-.*\"} / container_spec_memory_limit_bytes{pod=~\"trino-.*\"}",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Trino Query Spill-to-Disk Throughput (MB/s)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(trino_spilled_bytes_total[5m]) / 1048576",
+          "legendFormat": "Spilled MB/s"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "CSI Volume Attachment Latency (p95 / p99)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(storage_operation_duration_seconds_bucket{operation_name=\"volume_attach\"}[5m])) by (le))",
+          "legendFormat": "p95 Latency (s)"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(storage_operation_duration_seconds_bucket{operation_name=\"volume_attach\"}[5m])) by (le))",
+          "legendFormat": "p99 Latency (s)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "CNI eBPF Packet Drops vs Total Forwards",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(cilium_drop_count_total[5m])",
+          "legendFormat": "Dropped Packets/s"
+        }
+      ]
+    }
+  ]
+}

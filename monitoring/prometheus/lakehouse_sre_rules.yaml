@@ -1,0 +1,83 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: lakehouse-sre-golden-signals
+  namespace: monitoring
+  labels:
+    role: alert-rules
+    app.kubernetes.io/part-of: lakehouse-platform
+spec:
+  groups:
+  - name: LakehousePlatformSRE
+    rules:
+    # 1. Kafka Consumer Lag Critical
+    - alert: LakehouseKafkaConsumerLagCritical
+      expr: sum(kafka_consumergroup_lag{topic=~"lakehouse-.*"}) by (consumergroup, topic) > 50000
+      for: 5m
+      labels:
+        severity: critical
+        tier: data-plane
+      annotations:
+        summary: "Kafka consumer lag exceeded 50,000 messages on topic {{ $labels.topic }}"
+        description: "Consumer group {{ $labels.consumergroup }} is accumulating critical lag. Ingest pipeline SLA violated."
+        runbook_url: "file:///docs/runbooks/01-triage-lakehouse-ingest-lag.md"
+
+    # 2. Trino Coordinator Memory Saturation
+    - alert: TrinoCoordinatorMemorySaturation
+      expr: (container_memory_working_set_bytes{pod=~"trino-coordinator-.*"} / container_spec_memory_limit_bytes{pod=~"trino-coordinator-.*"}) > 0.88
+      for: 3m
+      labels:
+        severity: critical
+        tier: query-plane
+      annotations:
+        summary: "Trino coordinator memory utilization exceeded 88%"
+        description: "JVM heap pressure risks triggering G1 evacuation pause or kernel OOM killer."
+        runbook_url: "file:///docs/incidents/002-trino-coordinator-oom-spill-disk.md"
+
+    # 3. Trino Query Spill Disk Saturation
+    - alert: TrinoQuerySpillPressureHigh
+      expr: rate(trino_spilled_bytes_total[5m]) > 524288000 # 500MB/s spill rate
+      for: 5m
+      labels:
+        severity: warning
+        tier: query-plane
+      annotations:
+        summary: "Heavy spill-to-disk write rate detected on Trino cluster"
+        description: "Queries are heavily spilling to local NVMe mounts, indicating undersized memory pools or massive unindexed joins."
+        runbook_url: "file:///docs/adr/0001-nvme-spill-mounts-for-trino.md"
+
+    # 4. CSI Volume Attach Timeout Exceeded
+    - alert: CSIVolumeAttachTimeoutExceeded
+      expr: rate(storage_operation_duration_seconds_count{status="fail",operation_name=~"volume_attach.*"}[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: critical
+        tier: storage-plane
+      annotations:
+        summary: "CSI Volume attachment failures detected across cluster nodes"
+        description: "CSI driver failing volume attachment handshakes. Potential multi-attach deadlock."
+        runbook_url: "file:///docs/incidents/001-cross-site-pvc-deadlock.md"
+
+    # 5. CNI Packet Drop Ratio High (MTU / Policy Asymmetry)
+    - alert: CNIPacketDropRatioHigh
+      expr: (rate(cilium_drop_count_total[5m]) / (rate(cilium_forward_count_total[5m]) + 1)) > 0.02
+      for: 5m
+      labels:
+        severity: warning
+        tier: network-plane
+      annotations:
+        summary: "CNI eBPF packet drop ratio exceeded 2%"
+        description: "Inter-node pod communication dropping packets. Investigate MTU fragmentation or NetworkPolicy rules."
+        runbook_url: "file:///docs/incidents/003-cni-mtu-asymmetry-istio-upgrade.md"
+
+    # 6. Kube Controller Lease Renewal Stalled
+    - alert: KubeLeaseRenewalStalled
+      expr: (time() - coordination_lease_renew_time_seconds{name="kube-controller-manager"}) > 30
+      for: 2m
+      labels:
+        severity: critical
+        tier: control-plane
+      annotations:
+        summary: "Kube Controller Manager leader lease renewal is stalled"
+        description: "Leader lease expired or frozen, risking split-brain and stuck pod finalizers."
+        runbook_url: "file:///docs/incidents/004-stale-k8s-leases-split-brain.md"

@@ -1,11 +1,12 @@
 # Field SRE Operations, Failure Scenarios & Runbook Vault
 
+[![Enterprise Portal](https://img.shields.io/badge/Mission_Control-Enterprise_Platform_Portal-00e5ff?style=flat-square&logo=kubernetes)](https://freefades2black.github.io/enterprise-platform-portal)
 [![Operational Status](https://img.shields.io/badge/Fleet_Status-50%20Clusters%20Healthy-00aa55?style=flat-square&logo=kubernetes)](https://github.com/FreeFades2Black/platform-resilience-fieldguide)
 [![MTTR Target](https://img.shields.io/badge/Target_MTTR-%3C30m-blue?style=flat-square)](https://github.com/FreeFades2Black/platform-resilience-fieldguide)
-[![RCA Standards](https://img.shields.io/badge/Post_Mortem-Blameless_RCA-orange?style=flat-square)](https://github.com/FreeFades2Black/platform-resilience-fieldguide/tree/main/docs/incidents)
-[![DoD Compliance](https://img.shields.io/badge/Security-Platform_One_STIG-red?style=flat-square)](https://github.com/FreeFades2Black/platform-resilience-fieldguide)
+[![RCA Standards](https://img.shields.io/badge/Post_Mortem-Blameless_RCA-orange?style=flat-square)](https://freefades2black.github.io/enterprise-platform-portal/resilience-vault/incident-rcas/)
+[![DoD Compliance](https://img.shields.io/badge/Security-Platform_One_STIG-red?style=flat-square)](https://freefades2black.github.io/enterprise-platform-portal/fleet-overview/compliance/)
 
-An enterprise-grade operational resilience repository, incident post-mortem archive, and executable runbook vault engineered for managing ~50 production Kubernetes clusters across hybrid GovCloud and air-gapped federal enclaves.
+An enterprise-grade operational resilience repository, incident post-mortem archive, and executable runbook vault engineered for managing ~50 production Kubernetes clusters across hybrid GovCloud and air-gapped federal enclaves. Hosted live on the [Enterprise Platform Portal](https://freefades2black.github.io/enterprise-platform-portal).
 
 ---
 

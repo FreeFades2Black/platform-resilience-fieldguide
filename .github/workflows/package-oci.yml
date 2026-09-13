@@ -23,6 +23,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Generate Lowercase Repository Name
+        run: echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -32,13 +35,13 @@ jobs:
           context: .
           file: ./Dockerfile
           push: false
-          tags: ghcr.io/${{ github.repository }}/platform-sre-tools:${{ github.sha }},ghcr.io/${{ github.repository }}/platform-sre-tools:latest
+          tags: ghcr.io/${{ env.REPO_LC }}/platform-sre-tools:${{ github.sha }},ghcr.io/${{ env.REPO_LC }}/platform-sre-tools:latest
           load: true
 
       - name: Run Trivy Vulnerability Scanner (DoD Iron Bank Standard)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ghcr.io/${{ github.repository }}/platform-sre-tools:${{ github.sha }}
+          image-ref: ghcr.io/${{ env.REPO_LC }}/platform-sre-tools:${{ github.sha }}
           format: 'table'
           exit-code: '0'
           ignore-unfixed: true
@@ -51,6 +54,6 @@ jobs:
       - name: Verify Image Digest & Security Attestation
         run: |
           echo "==> Image digest inspected:"
-          docker images --digests ghcr.io/${{ github.repository }}/platform-sre-tools:${{ github.sha }}
+          docker images --digests ghcr.io/${{ env.REPO_LC }}/platform-sre-tools:${{ github.sha }}
           echo "==> Simulating Cosign keyless cryptographic signature generation..."
           echo "Image digest signed and attested against DoD Platform One compliance root."

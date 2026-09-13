@@ -36,7 +36,7 @@ jobs:
           load: true
 
       - name: Run Trivy Vulnerability Scanner (DoD Iron Bank Standard)
-        uses: aquasecurity/trivy-action@0.18.0
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ghcr.io/${{ github.repository }}/platform-sre-tools:${{ github.sha }}
           format: 'table'

@@ -14,6 +14,7 @@ jobs:
   build-scan-sign:
     name: Build Distroless Image, Trivy Scan & Cosign Sign
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       packages: write
